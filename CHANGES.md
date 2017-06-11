@@ -1,6 +1,32 @@
 CHANGES
 =======
 
+2.2 (2017-04-23)
+----------------
+
+- Changed the visibility of `OkHostnameVerifier` class from 'public'
+  to `package private`.
+
+
+2.1 (2017-04-23)
+----------------
+
+- Added hostname verification (Pull Request #107). Thank you, blunden.
+- Added `DistinguishedNameParser` class and `OkHostnameVerifier` class
+  which were included in the pull request #107. They are from okhttp.
+- Added `WebSocketError.HOSTNAME_UNVERIFIED`.
+- Added `HostnameUnverifiedException` class.
+
+
+2.0 (2017-04-22)
+----------------
+
+- Added `ThreadType` enum.
+- Added `WebSocketListener.onThreadCreated(WebSocket, ThreadType, Thread)` method.
+- Added `WebSocketListener.onThreadStarted(WebSocket, ThreadType, Thread)` method.
+- Added `WebSocketListener.onThreadStopping(WebSocket, ThreadType, Thread)` method.
+
+
 1.31 (2016-12-25)
 -----------------
 

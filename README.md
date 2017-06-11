@@ -34,16 +34,17 @@ Maven
 <dependency>
     <groupId>com.neovisionaries</groupId>
     <artifactId>nv-websocket-client</artifactId>
-    <version>1.31</version>
+    <version>2.2</version>
 </dependency>
 ```
+
 
 Gradle
 ------
 
 ```Gradle
 dependencies {
-    compile 'com.neovisionaries:nv-websocket-client:1.31'
+    compile 'com.neovisionaries:nv-websocket-client:2.2'
 }
 ```
 
@@ -52,7 +53,7 @@ OSGi
 ----
 
     Bundle-SymbolicName: com.neovisionaries.ws.client
-    Export-Package: com.neovisionaries.ws.client;version="1.31.0"
+    Export-Package: com.neovisionaries.ws.client;version="2.2.0"
 
 
 Source Code
@@ -230,13 +231,17 @@ interface.
 | `onTextFrame`                 | Called when a text frame was received.               |
 | `onTextMessage`               | Called when a text message was received.             |
 | `onTextMessageError`          | Called when a text message failed to be constructed. |
+| `onThreadCreated`             | Called after a thread was created.                   |
+| `onThreadStarted`             | Called at the beginning of a thread's run() method.  |
+| `onThreadStopping`            | Called at the end of a thread's run() method.        |
 | `onUnexpectedError`           | Called when an uncaught throwable was detected.      |
 
 
 #### Configure WebSocket
 
-Before starting a WebSocket [opening handshake]
-(http://tools.ietf.org/html/rfc6455#section-4) with the server, you can
+Before starting a WebSocket
+[opening handshake](http://tools.ietf.org/html/rfc6455#section-4)
+with the server, you can
 configure the WebSocket instance by using the following methods.
 
 | METHOD              | DESCRIPTION                                             |
@@ -271,6 +276,10 @@ catch (OpeningHandshakeException e)
 {
     // A violation against the WebSocket protocol was detected
     // during the opening handshake.
+}
+catch (HostnameUnverifiedException e)
+{
+    // The certificate of the peer does not match the expected hostname.
 }
 catch (WebSocketException e)
 {
@@ -321,6 +330,10 @@ catch (OpeningHandshakeException e)
     }
 }
 ```
+
+Also, `connect()` method throws `HostnameUnverifiedException` which is a
+subclass of `WebSocketException` (since version 2.1) when the certificate
+of the peer does not match the expected hostname.
 
 
 #### Connect To Server Asynchronously
@@ -455,8 +468,8 @@ ws.setPingInterval(0);
 ```
 
 Likewise, you can send pong frames periodically by calling `setPongInterval`
-method. "_A Pong frame MAY be sent **unsolicited**._" ([RFC 6455, 5.5.3. Pong]
-(https://tools.ietf.org/html/rfc6455#section-5.5.3))
+method. "_A Pong frame MAY be sent **unsolicited**._"
+([RFC 6455, 5.5.3. Pong](https://tools.ietf.org/html/rfc6455#section-5.5.3))
 
 You can customize payload of ping/pong frames that are sent automatically
 by using `setPingPayloadGenerator()` and `setPongPayloadGenerator()` methods.
@@ -685,6 +698,42 @@ public void handleCallbackError(WebSocket websocket, Throwable cause) throws Exc
 ```
 
 
+#### Thread Callbacks
+
+Some threads are created internally in the implementation of `WebSocket`.
+Known threads are as follows.
+
+| Thread Type      | Description                                                 |
+|:-----------------|:------------------------------------------------------------|
+| `READING_THREAD` | A thread which reads WebSocket frames from the server.      |
+| `WRITING_THREAD` | A thread which sends WebSocket frames to the server.        |
+| `CONNECT_THREAD` | A thread which calls `WebSocket.connect()` asynchronously.  |
+| `FINISH_THREAD`  | A thread which does finalization of a `WebSocket` instance. |
+
+The following callack methods of `WebSocketListener` are called according
+to the life cycle of the threads.
+
+| Method               | Description                                             |
+|:---------------------|:--------------------------------------------------------|
+| `onThreadCreated()`  | Called after a thread was created.                      |
+| `onThreadStarted()`  | Called at the beginning of the thread's `run()` method. |
+| `onThreadStopping()` | Called at the end of the thread's `run()` method.       |
+
+For example, if you want to change the name of the reading thread,
+implement `onThreadCreated()` method like below.
+
+```java
+@Override
+public void onThreadCreated(WebSocket ws, ThreadType type, Thread thread)
+{
+    if (type == ThreadType.READING_THREAD)
+    {
+        thread.setName("READING_THREAD");
+    }
+}
+```
+
+
 Sample Application
 ------------------
 
@@ -692,8 +741,8 @@ The following is a sample application that connects to the echo server on
 [websocket.org](https://www.websocket.org) (`ws://echo.websocket.org`) and
 repeats to (1) read a line from the standard input, (2) send the read line
 to the server and (3) prints the response from the server, until `exit` is
-entered. The source code can be downloaded from [Gist]
-(https://gist.github.com/TakahikoKawasaki/e79d36bf91bf9508ddd2).
+entered. The source code can be downloaded from
+[Gist](https://gist.github.com/TakahikoKawasaki/e79d36bf91bf9508ddd2).
 
 ```java
 import java.io.*;
@@ -811,6 +860,13 @@ TODO
 - SOCKS support
 - Public Key Pinning support ([RFC 7469](http://tools.ietf.org/html/rfc7469))
 - And other [issues](https://github.com/TakahikoKawasaki/nv-websocket-client/issues)
+
+
+Acknowledgement
+---------------
+
+- PR #107 has incorporated `DistinguishedNameParser` and `OkHostnameVerifier`
+  into this library and they are from [okhttp](https://github.com/square/okhttp).
 
 
 Author

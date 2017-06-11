@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Neo Visionaries Inc.
+ * Copyright (C) 2017 Neo Visionaries Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,43 +16,17 @@
 package com.neovisionaries.ws.client;
 
 
-import java.net.InetSocketAddress;
-
-
-class Address
+class FinishThread extends WebSocketThread
 {
-    private final String mHost;
-    private final int mPort;
-    private transient String mString;
-
-
-    Address(String host, int port)
+    public FinishThread(WebSocket ws)
     {
-        mHost = host;
-        mPort = port;
-    }
-
-
-    InetSocketAddress toInetSocketAddress()
-    {
-        return new InetSocketAddress(mHost, mPort);
-    }
-
-
-    String getHostname()
-    {
-        return mHost;
+        super("FinishThread", ws, ThreadType.FINISH_THREAD);
     }
 
 
     @Override
-    public String toString()
+    public void runMain()
     {
-        if (mString == null)
-        {
-            mString = String.format("%s:%d", mHost, mPort);
-        }
-
-        return mString;
+        mWebSocket.finish();
     }
 }

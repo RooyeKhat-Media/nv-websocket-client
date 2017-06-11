@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Neo Visionaries Inc.
+ * Copyright (C) 2016-2017 Neo Visionaries Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.neovisionaries.ws.client;
 
 import java.io.IOException;
 import java.net.Socket;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -108,6 +109,13 @@ class SocketConnector
         {
             // Connect to the server (either a proxy or a WebSocket endpoint).
             mSocket.connect(mAddress.toInetSocketAddress(), mConnectionTimeout);
+
+            if (mSocket instanceof SSLSocket)
+            {
+                // Verify that the hostname matches the certificate here since
+                // this is not automatically done by the SSLSocket.
+                verifyHostname((SSLSocket)mSocket, mAddress.getHostname());
+            }
         }
         catch (IOException e)
         {
@@ -126,6 +134,26 @@ class SocketConnector
             // SSL handshake is performed as necessary, too.
             handshake();
         }
+    }
+
+
+    private void verifyHostname(SSLSocket socket, String hostname) throws HostnameUnverifiedException
+    {
+        // Hostname verifier.
+        OkHostnameVerifier verifier = OkHostnameVerifier.INSTANCE;
+
+        // The SSL session.
+        SSLSession session = socket.getSession();
+
+        // Verify the hostname.
+        if (verifier.verify(hostname, session))
+        {
+            // Verified. No problem.
+            return;
+        }
+
+        // The certificate of the peer does not match the expected hostname.
+        throw new HostnameUnverifiedException(socket, hostname);
     }
 
 
@@ -174,6 +202,13 @@ class SocketConnector
             // Start the SSL handshake manually. As for the reason, see
             // http://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/samples/sockets/client/SSLSocketClient.java
             ((SSLSocket)mSocket).startHandshake();
+
+            if (mSocket instanceof SSLSocket)
+            {
+                // Verify that the proxied hostname matches the certificate here since
+                // this is not automatically done by the SSLSocket.
+                verifyHostname((SSLSocket)mSocket, mProxyHandshaker.getProxiedHostname());
+            }
         }
         catch (IOException e)
         {
