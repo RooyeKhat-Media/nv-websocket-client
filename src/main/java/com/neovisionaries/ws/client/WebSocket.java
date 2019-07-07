@@ -410,7 +410,18 @@ import com.neovisionaries.ws.client.StateManager.CloseInitiator;
  *     </tr>
  *     <tr>
  *       <td>{@link #getSocket() getSocket}</td>
- *       <td>Gets the underlying {@link Socket} instance to configure it.</td>
+ *       <td>
+ *         Gets the underlying {@link Socket} instance to configure it.
+ *         Note that this may return {@code null} since version 2.9.
+ *         Consider using {@link #getConnectedSocket()} as necessary.
+ *       </td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link #getConnectedSocket() getConnectedSocket}</td>
+ *       <td>
+ *         Establishes and gets the underlying Socket instance to configure it.
+ *         Available since version 2.9.
+ *       </td>
  *     </tr>
  *     <tr>
  *       <td>{@link #setExtended(boolean) setExtended}</td>
@@ -711,6 +722,20 @@ import com.neovisionaries.ws.client.StateManager.CloseInitiator;
  * generate()} method must not exceed 125.
  * </p>
  *
+ * <p>
+ * You can change the names of the {@link java.util.Timer Timer}s that send ping/pong
+ * frames periodically by using {@link #setPingSenderName(String)} and
+ * {@link #setPongSenderName(String)} methods.
+ * </p>
+ *
+ * <blockquote>
+ * <pre style="border-left: solid 5px lightgray;"> <span style="color: green;">// Change the Timers' names.</span>
+ * ws.{@link #setPingSenderName(String)
+ * setPingSenderName}(<span style="color: darkred;">"PING_SENDER"</span>);
+ * ws.{@link #setPongSenderName(String)
+ * setPongSenderName}(<span style="color: darkred;">"PONG_SENDER"</span>);
+ * </blockquote>
+ *
  * <h3>Auto Flush</h3>
  *
  * <p>
@@ -829,6 +854,24 @@ import com.neovisionaries.ws.client.StateManager.CloseInitiator;
  * > // Make this library report an error when the end of the input stream
  * // of the WebSocket connection is reached before a close frame is read.</span>
  * ws.{@link #setMissingCloseFrameAllowed(boolean) setMissingCloseFrameAllowed}(false);</pre>
+ * </blockquote>
+ *
+ * <h3>Direct Text Message</h3>
+ *
+ * <p>
+ * When a text message was received, {@link WebSocketListener#onTextMessage(WebSocket, String)
+ * onTextMessage(WebSocket, String)} is called. The implementation internally converts
+ * the byte array of the text message into a {@code String} object before calling the
+ * listener method. If you want to receive the byte array directly without the string
+ * conversion, call {@link #setDirectTextMessage(boolean)} with {@code true}, and
+ * {@link WebSocketListener#onTextMessage(WebSocket, byte[]) onTextMessage(WebSocket, byte[])}
+ * will be called instead.
+ * </p>
+ *
+ * <blockquote>
+ * <pre style="border-left: solid 5px lightgray;"><span style="color: green;"
+ * > // Receive text messages without string conversion.</span>
+ * ws.{@link #setDirectTextMessage(boolean) setDirectTextMessage}(true);</pre>
  * </blockquote>
  *
  * <h3>Disconnect WebSocket</h3>
@@ -1078,6 +1121,7 @@ public class WebSocket
     private boolean mExtended;
     private boolean mAutoFlush = true;
     private boolean mMissingCloseFrameAllowed = true;
+    private boolean mDirectTextMessage;
     private int mFrameQueueSize;
     private int mMaxPayloadSize;
     private boolean mOnConnectedCalled;
@@ -1178,6 +1222,7 @@ public class WebSocket
         instance.mExtended = mExtended;
         instance.mAutoFlush = mAutoFlush;
         instance.mMissingCloseFrameAllowed = mMissingCloseFrameAllowed;
+        instance.mDirectTextMessage = mDirectTextMessage;
         instance.mFrameQueueSize = mFrameQueueSize;
 
         // Copy listeners.
@@ -1654,6 +1699,61 @@ public class WebSocket
 
 
     /**
+     * Check if text messages are passed to listeners without string conversion.
+     *
+     * <p>
+     * If this method returns {@code true}, when a text message is received,
+     * {@link WebSocketListener#onTextMessage(WebSocket, byte[])
+     * onTextMessage(WebSocket, byte[])} will be called instead of
+     * {@link WebSocketListener#onTextMessage(WebSocket, String)
+     * onTextMessage(WebSocket, String)}. The purpose of this behavior
+     * is to skip internal string conversion which is performed in the
+     * implementation of {@code ReadingThread}.
+     * </p>
+     *
+     * @return
+     *         {@code true} if text messages are passed to listeners without
+     *         string conversion.
+     *
+     * @since 2.6
+     */
+    public boolean isDirectTextMessage()
+    {
+        return mDirectTextMessage;
+    }
+
+
+    /**
+     * Set whether to receive text messages directly as byte arrays without
+     * string conversion.
+     *
+     * <p>
+     * If {@code true} is set to this property, when a text message is received,
+     * {@link WebSocketListener#onTextMessage(WebSocket, byte[])
+     * onTextMessage(WebSocket, byte[])} will be called instead of
+     * {@link WebSocketListener#onTextMessage(WebSocket, String)
+     * onTextMessage(WebSocket, String)}. The purpose of this behavior
+     * is to skip internal string conversion which is performed in the
+     * implementation of {@code ReadingThread}.
+     * </p>
+     *
+     * @param direct
+     *         {@code true} to receive text messages as byte arrays.
+     *
+     * @return
+     *         {@code this} object.
+     *
+     * @since 2.6
+     */
+    public WebSocket setDirectTextMessage(boolean direct)
+    {
+        mDirectTextMessage = direct;
+
+        return this;
+    }
+
+
+    /**
      * Flush frames to the server. Flush is performed asynchronously.
      *
      * @return
@@ -1963,6 +2063,72 @@ public class WebSocket
 
 
     /**
+     * Get the name of the {@code Timer} that sends ping frames periodically.
+     *
+     * @return
+     *         The {@code Timer}'s name.
+     *
+     * @since 2.5
+     */
+    public String getPingSenderName()
+    {
+        return mPingSender.getTimerName();
+    }
+
+
+    /**
+     * Set the name of the {@code Timer} that sends ping frames periodically.
+     *
+     * @param name
+     *         A name for the {@code Timer}.
+     *
+     * @return
+     *         {@code this} object.
+     *
+     * @since 2.5
+     */
+    public WebSocket setPingSenderName(String name)
+    {
+        mPingSender.setTimerName(name);
+
+        return this;
+    }
+
+
+    /**
+     * Get the name of the {@code Timer} that sends pong frames periodically.
+     *
+     * @return
+     *         The {@code Timer}'s name.
+     *
+     * @since 2.5
+     */
+    public String getPongSenderName()
+    {
+        return mPongSender.getTimerName();
+    }
+
+
+    /**
+     * Set the name of the {@code Timer} that sends pong frames periodically.
+     *
+     * @param name
+     *         A name for the {@code Timer}.
+     *
+     * @return
+     *         {@code this} object.
+     *
+     * @since 2.5
+     */
+    public WebSocket setPongSenderName(String name)
+    {
+        mPongSender.setTimerName(name);
+
+        return this;
+    }
+
+
+    /**
      * Add a listener to receive events on this WebSocket.
      *
      * @param listener
@@ -2055,14 +2221,40 @@ public class WebSocket
 
 
     /**
-     * Get the raw socket which this WebSocket uses internally.
+     * Get the raw socket which this WebSocket uses internally if it has been
+     * established, yet.
+     *
+     * <p>
+     * Version 2.9 has changed the behavior of this method, and this method may
+     * return {@code null} if the underlying socket has not been established yet.
+     * Consider using {@link #getConnectedSocket()} method as necessary.
+     * </p>
      *
      * @return
      *         The underlying {@link Socket} instance.
+     *         This may be {@code null} in case the underlying socket has not
+     *         been established, yet.
+     *
+     * @see #getConnectedSocket()
      */
     public Socket getSocket()
     {
         return mSocketConnector.getSocket();
+    }
+
+
+    /**
+     * Get the raw socket which this WebSocket uses internally. This will
+     * establish a connection to the server if not already done.
+     *
+     * @return
+     *         The underlying {@link Socket} instance.
+     *
+     * @since 2.9
+     */
+    public Socket getConnectedSocket() throws WebSocketException
+    {
+        return mSocketConnector.getConnectedSocket();
     }
 
 
@@ -2096,13 +2288,20 @@ public class WebSocket
      * <p>
      * Also, as necessary, {@link #getSocket()} should be used to set up socket
      * parameters before you call this method. For example, you can set the
-     * socket timeout like the following.
+     * socket timeout like the following. Note that, however, because the version
+     * 2.9 changed the behavior of {@link #getSocket()} and the method may return
+     * {@code null} if the underlying socket has not been established yet, you may
+     * need to use {@link #getConnectedSocket()} method instead.
      * </p>
      *
      * <pre>
      * WebSocket websocket = ......;
      * websocket.{@link #getSocket() getSocket()}.{@link Socket#setSoTimeout(int)
      * setSoTimeout}(5000);
+     *
+     * <span style="color: green;">// getConnectedSocket() instead of getSocket(), since version 2.9.</span>
+     * websocket.{@link #getConnectedSocket() getConnectedSocket()}.{@link
+     * Socket#setSoTimeout(int) setSoTimeout}(5000);
      * </pre>
      *
      * <p>
@@ -2149,10 +2348,10 @@ public class WebSocket
         try
         {
             // Connect to the server.
-            mSocketConnector.connect();
+            Socket socket = mSocketConnector.connect();
 
             // Perform WebSocket handshake.
-            headers = shakeHands();
+            headers = shakeHands(socket);
         }
         catch (WebSocketException e)
         {
@@ -3102,11 +3301,8 @@ public class WebSocket
     /**
      * Perform the opening handshake.
      */
-    private Map<String, List<String>> shakeHands() throws WebSocketException
+    private Map<String, List<String>> shakeHands(Socket socket) throws WebSocketException
     {
-        // The raw socket created by WebSocketFactory.
-        Socket socket = mSocketConnector.getSocket();
-
         // Get the input stream of the socket.
         WebSocketInputStream input = openInputStream(socket);
 
@@ -3535,14 +3731,18 @@ public class WebSocket
         mPingSender.stop();
         mPongSender.stop();
 
-        try
+        // Close the raw socket.
+        Socket socket = mSocketConnector.getSocket();
+        if (socket != null)
         {
-            // Close the raw socket.
-            mSocketConnector.getSocket().close();
-        }
-        catch (Throwable t)
-        {
-            // Ignore any error raised by close().
+            try
+            {
+                socket.close();
+            }
+            catch (Throwable t)
+            {
+                // Ignore any error raised by close().
+            }
         }
 
         synchronized (mStateManager)

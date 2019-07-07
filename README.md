@@ -34,7 +34,7 @@ Maven
 <dependency>
     <groupId>com.neovisionaries</groupId>
     <artifactId>nv-websocket-client</artifactId>
-    <version>2.4</version>
+    <version>2.9</version>
 </dependency>
 ```
 
@@ -44,7 +44,7 @@ Gradle
 
 ```Gradle
 dependencies {
-    compile 'com.neovisionaries:nv-websocket-client:2.4'
+    compile 'com.neovisionaries:nv-websocket-client:2.9'
 }
 ```
 
@@ -53,7 +53,7 @@ OSGi
 ----
 
     Bundle-SymbolicName: com.neovisionaries.ws.client
-    Export-Package: com.neovisionaries.ws.client;version="2.4.0"
+    Export-Package: com.neovisionaries.ws.client;version="2.9.0"
 
 
 Source Code
@@ -281,16 +281,17 @@ Before starting a WebSocket
 with the server, you can
 configure the WebSocket instance by using the following methods.
 
-| METHOD              | DESCRIPTION                                             |
-|---------------------|---------------------------------------------------------|
-| `addProtocol`       | Adds an element to `Sec-WebSocket-Protocol`.            |
-| `addExtension`      | Adds an element to `Sec-WebSocket-Extensions`.          |
-| `addHeader`         | Adds an arbitrary HTTP header.                          |
-| `setUserInfo`       | Adds `Authorization` header for Basic Authentication.   |
-| `getSocket`         | Gets the underlying `Socket` instance to configure it.  |
-| `setExtended`       | Disables validity checks on RSV1/RSV2/RSV3 and opcode.  |
-| `setFrameQueueSize` | Set the size of the frame queue for congestion control. |
-| `setMaxPayloadSize` | Set the maximum payload size.                           |
+| METHOD               | DESCRIPTION                                             |
+|----------------------|---------------------------------------------------------|
+| `addProtocol`        | Adds an element to `Sec-WebSocket-Protocol`.            |
+| `addExtension`       | Adds an element to `Sec-WebSocket-Extensions`.          |
+| `addHeader`          | Adds an arbitrary HTTP header.                          |
+| `setUserInfo`        | Adds `Authorization` header for Basic Authentication.   |
+| `getSocket`          | Gets the underlying `Socket` instance to configure it. Note that this may return `null` since version 2.9. Consider using `getConnectedSocket()` as necessary. |
+| `getConnectedSocket` | Establishes and gets the underlying `Socket` instance to configure it. Available since version 2.9. |
+| `setExtended`        | Disables validity checks on RSV1/RSV2/RSV3 and opcode.  |
+| `setFrameQueueSize`  | Set the size of the frame queue for congestion control. |
+| `setMaxPayloadSize`  | Set the maximum payload size.                           |
 | `setMissingCloseFrameAllowed` | Set to whether to allow the server to close the connection without sending a close frame. |
 
 
@@ -528,6 +529,15 @@ Note that the maximum payload length of control frames (e.g. ping frames)
 is 125. Therefore, the length of a byte array returned from `generate()`
 method must not exceed 125.
 
+You can change the names of the `Timer`s that send ping/pong frames
+periodically by using `setPingSenderName()` and `setPongSenderName()` methods.
+
+```java
+// Change the Timers' names.
+ws.setPingSenderName("PING_SENDER");
+ws.setPongSenderName("PONG_SENDER");
+```
+
 
 #### Auto Flush
 
@@ -626,6 +636,21 @@ to `setMissingCloseFrameAllowed` method.
 // Make this library report an error when the end of the input stream
 // of the WebSocket connection is reached before a close frame is read.
 ws.setMissingCloseFrameAllowed(false);
+```
+
+
+#### Direct Text Message
+
+When a text message was received, `onTextMessage(WebSocket, String)` is called.
+The implementation internally converts the byte array of the text message into
+a `String` object before calling the listener method. If you want to receive
+the byte array directly without the string conversion, call
+`setDirectTextMessage(boolean)` with `true`, and `onTextMessage(WebSocket, byte[])`
+will be called instead.
+
+```java
+// Receive text messages without string conversion.
+ws.setDirectTextMessage(true);
 ```
 
 
@@ -884,6 +909,14 @@ Limitations
   the agreed sliding window size.
 
 
+Note
+----
+
+* The version 2.9 introduced a change that breaks backward compatibility where
+  `WebSocket.getSocket()` may return null if the underlying socket has not been
+  established yet. Consider using `getConnectedSocket()` method as necessary.
+
+
 See Also
 --------
 
@@ -909,5 +942,5 @@ Acknowledgement
 Author
 ------
 
-[Authlete, Inc.](https://www.authlete.com/) & Neo Visionaries Inc.<br/>
+[Authlete, Inc.](https://www.authlete.com/)<br/>
 Takahiko Kawasaki &lt;taka@authlete.com&gt;

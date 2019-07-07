@@ -1,7 +1,56 @@
 CHANGES
 =======
 
-2.4 (2017-04-18)
+2.9 (2019-06-27)
+----------------
+
+- RFC 6555 support (Dual Stack / Happy Eyeballs) (Pull Request #183, Issue #112)
+
+- `WebSocket` class
+    * Added `getConnectedSocket()` method.
+    * Changed the behavior of `getSocket()` method. It returns null when
+      the underlying socket has not been established yet. Consider using
+      `getConnectedSocket()` method instead as necessary.
+
+
+2.8 (2019-03-19)
+----------------
+
+- `ListenerManager` class
+    * Modified `clearListeners()` method in `ListenerManager` class to
+      avoid synchronization issues (Issue #180).
+
+
+2.7 (2019-03-16)
+----------------
+
+- `ListenerManager` class
+    * Modified `clearListeners()` method in `ListenerManager` class to
+      release references held in an internal list (Issue #180).
+
+
+2.6 (2018-09-27)
+----------------
+
+- `WebSocket` class
+    * Added `isDirectTextMessage()` method.
+    * Added `setDirectTextMessage(boolean)` method.
+
+- `WebSocketListener` class
+    * Added `onTextMessage(WebSocket, byte[])` method.
+
+
+2.5 (2018-06-01)
+----------------
+
+- `WebSocket` class
+    * Added `getPingSenderName()` method.
+    * Added `setPingSenderName(String)` method.
+    * Added `getPongSenderName()` method.
+    * Added `setPongSenderName(String)` method.
+
+
+2.4 (2018-04-18)
 ----------------
 
 - Added `WebSocketFactory.getServerNames()` method.

@@ -228,6 +228,12 @@ class ReadingThread extends WebSocketThread
      */
     private void callOnTextMessage(byte[] data)
     {
+        if (mWebSocket.isDirectTextMessage())
+        {
+            mWebSocket.getListenerManager().callOnTextMessage(data);
+            return;
+        }
+
         try
         {
             // Interpret the byte array as a string.
@@ -1184,7 +1190,10 @@ class ReadingThread extends WebSocketThread
             try
             {
                 Socket socket = mWebSocket.getSocket();
-                socket.close();
+                if (socket != null)
+                {
+                    socket.close();
+                }
             }
             catch (Throwable t)
             {
